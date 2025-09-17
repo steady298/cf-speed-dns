@@ -8,9 +8,9 @@ import json
 CF_API_TOKEN    =   os.environ["CF_API_TOKEN"]
 CF_ZONE_ID      =   os.environ["CF_ZONE_ID"]
 CF_DNS_NAME     =   os.environ["CF_DNS_NAME"]
-
+PUSHDEER_KEY =      os.environ["PUSHDEER_KEY"]  # 替换为你的 PushDeer key
 # pushplus_token
-PUSHPLUS_TOKEN  =   os.environ["PUSHPLUS_TOKEN"]
+
 
 
 
@@ -69,33 +69,54 @@ def update_dns_record(record_id, name, cf_ip):
         return "ip:" + str(cf_ip) + "解析" + str(name) + "失败"
 
 # 消息推送
-def push_plus(content):
-    url = 'http://www.pushplus.plus/send'
-    data = {
-        "token": PUSHPLUS_TOKEN,
-        "title": "IP优选DNSCF推送",
-        "content": content,
-        "template": "markdown",
-        "channel": "wechat"
-    }
-    body = json.dumps(data).encode(encoding='utf-8')
-    headers = {'Content-Type': 'application/json'}
-    requests.post(url, data=body, headers=headers)
+def push_deer(text, desp='', type_='text'):
+    try:
+        url = "https://api2.pushdeer.com/message/push"
+        data = {
+            'text': text,
+            'desp': desp,
+            'type': type_,
+            'pushkey': PUSHDEER_KEY
+        }
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+        response = requests.post(url, data=data, headers=headers, timeout=10)
+        if response.ok:
+            print("PushDeer 推送成功:", response.text)
+        else:
+            print("PushDeer 推送失败:", response.status_code, response.text)
+    except Exception as e:
+        traceback.print_exc()
+        print("PushDeer 推送异常:", e)
 
 # 主函数
 def main():
-    # 获取最新优选IP
     ip_addresses_str = get_cf_speed_test_ip()
-    ip_addresses = ip_addresses_str.split(',')
-    dns_records = get_dns_records(CF_DNS_NAME)
-    push_plus_content = []
-    # 遍历 IP 地址列表
-    for index, ip_address in enumerate(ip_addresses):
-        # 执行 DNS 变更
-        dns = update_dns_record(dns_records[index], CF_DNS_NAME, ip_address)
-        push_plus_content.append(dns)
+    if not ip_addresses_str:
+        print("未能获取优选IP，退出。")
+        return
 
-    push_plus('\n'.join(push_plus_content))
+    # 取第一个 IP
+    ip_addresses = [ip.strip() for ip in ip_addresses_str.split(',') if ip.strip()]
+    if not ip_addresses:
+        print("解析到的 IP 列表为空，退出。")
+        return
+
+    best_ip = ip_addresses[0]  # 只用第一个 IP
+    print(f"选择优选IP: {best_ip}")
+
+    dns_records = get_dns_records(CF_DNS_NAME)
+    if not dns_records:
+        print(f"未找到 {CF_DNS_NAME} 的 DNS 记录")
+        return
+
+    # 更新第一个记录
+    record_id = dns_records[0]
+    res = update_dns_record(record_id, CF_DNS_NAME, best_ip)
+
+    print(res)
+    push_deer("IP优选DNSCF推送", desp=res)
 
 if __name__ == '__main__':
     main()
