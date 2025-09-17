@@ -8,11 +8,7 @@ import json
 CF_API_TOKEN    =   os.environ["CF_API_TOKEN"]
 CF_ZONE_ID      =   os.environ["CF_ZONE_ID"]
 CF_DNS_NAME     =   os.environ["CF_DNS_NAME"]
-PUSHDEER_KEY =      os.environ["PUSHDEER_KEY"]  # 替换为你的 PushDeer key
-# pushplus_token
-
-
-
+PUSHDEER_KEY    =   os.environ["PUSHDEER_KEY"]
 
 headers = {
     'Authorization': f'Bearer {CF_API_TOKEN}',
